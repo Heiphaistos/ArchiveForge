@@ -23,7 +23,6 @@ export function ExportList({ refresh }: Props) {
     load();
   }, [load, refresh]);
 
-  // Polling auto si jobs actifs ou en attente
   useEffect(() => {
     const hasLive = jobs.some((j) => j.status === 'active' || j.status === 'pending');
     if (!hasLive) return;
@@ -38,8 +37,8 @@ export function ExportList({ refresh }: Props) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-gray-500 text-sm">
-        <div className="w-4 h-4 border-2 border-gray-600 border-t-blue-500 rounded-full animate-spin" />
+      <div className="spinner">
+        <div className="spin" />
         Chargement…
       </div>
     );
@@ -47,15 +46,15 @@ export function ExportList({ refresh }: Props) {
 
   if (jobs.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-600">
-        <p className="text-lg">Aucun export</p>
-        <p className="text-sm mt-1">Lance ton premier export ci-dessus</p>
+      <div className="empty-state">
+        <p>Aucun export</p>
+        <p>Lance ton premier export ci-dessus</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="job-list">
       {jobs.map((job) => (
         <ExportCard key={job.id} job={job} onDelete={handleDelete} />
       ))}

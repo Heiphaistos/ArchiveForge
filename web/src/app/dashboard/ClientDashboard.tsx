@@ -6,12 +6,14 @@ import { ExportList } from '@/components/ExportList';
 export function ClientDashboard() {
   const [refresh, setRefresh] = useState(0);
   return (
-    <div className="space-y-6">
-      <ExportForm onCreated={() => setRefresh((r) => r + 1)} />
-      <div>
-        <h2 className="text-base font-semibold text-white mb-3">Historique</h2>
-        <ExportList refresh={refresh} />
+    <>
+      <div className="card">
+        <div className="card-title">Nouvel export</div>
+        <ExportForm onCreated={() => setRefresh((r) => r + 1)} />
       </div>
-    </div>
+
+      <div className="section-title">Historique</div>
+      <ExportList refresh={refresh} />
+    </>
   );
 }

@@ -7,13 +7,14 @@ export default async function DashboardPage() {
   if (!session) redirect('/login');
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white">ArchiveForge</h1>
-          <p className="text-gray-500 text-sm">
-            Connecté : {session.user?.name ?? 'Admin'}
-          </p>
+    <div className="page">
+      <header className="header">
+        <div className="header-brand">
+          <div className="header-icon">⚓</div>
+          <div>
+            <div className="header-title">ArchiveForge</div>
+            <div className="header-sub">Connecté : {session.user?.name ?? 'Admin'}</div>
+          </div>
         </div>
         <form
           action={async () => {
@@ -21,12 +22,7 @@ export default async function DashboardPage() {
             await signOut({ redirectTo: '/login' });
           }}
         >
-          <button
-            type="submit"
-            className="text-sm text-gray-400 hover:text-white transition px-3 py-1.5 rounded-lg hover:bg-white/5"
-          >
-            Déconnexion
-          </button>
+          <button type="submit" className="btn-logout">Déconnexion</button>
         </form>
       </header>
 
