@@ -3,8 +3,22 @@ import { config } from './config.js';
 import { logger } from './utils/logger.js';
 import { startExportWorker } from './workers/export.worker.js';
 
-process.on('uncaughtException', (err) => logger.error('[process] uncaughtException', { err }));
-process.on('unhandledRejection', (reason) => logger.error('[process] unhandledRejection', { reason }));
+process.on('uncaughtException', (err) => {
+  logger.error('[process] uncaughtException', {
+    message: err.message,
+    stack: err.stack,
+    name: err.name,
+  });
+});
+process.on('unhandledRejection', (reason) => {
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  logger.error('[process] unhandledRejection', {
+    message: err.message,
+    stack: err.stack,
+    name: err.name,
+    raw: reason,
+  });
+});
 
 discordClient.once('ready', (client) => {
   logger.info(`[bot] Connecté en tant que ${client.user.tag}`);
