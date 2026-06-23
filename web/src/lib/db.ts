@@ -32,15 +32,20 @@ sqlite.exec(`
     started_at INTEGER,
     completed_at INTEGER,
     options TEXT NOT NULL
-  );
-
-  -- Migration: add new columns if they don't exist
-  ALTER TABLE export_jobs ADD COLUMN IF NOT EXISTS progress_eta INTEGER;
-  ALTER TABLE export_jobs ADD COLUMN IF NOT EXISTS progress_elapsed INTEGER;
-  ALTER TABLE export_jobs ADD COLUMN IF NOT EXISTS progress_phase TEXT;
-  ALTER TABLE export_jobs ADD COLUMN IF NOT EXISTS channel_count INTEGER;
-  ALTER TABLE export_jobs ADD COLUMN IF NOT EXISTS message_count INTEGER;
-  ALTER TABLE export_jobs ADD COLUMN IF NOT EXISTS started_at INTEGER;
+  )
 `);
+
+// SQLite doesn't support IF NOT EXISTS in ALTER TABLE — catch per column
+const migrations = [
+  'ALTER TABLE export_jobs ADD COLUMN progress_eta INTEGER',
+  'ALTER TABLE export_jobs ADD COLUMN progress_elapsed INTEGER',
+  'ALTER TABLE export_jobs ADD COLUMN progress_phase TEXT',
+  'ALTER TABLE export_jobs ADD COLUMN channel_count INTEGER',
+  'ALTER TABLE export_jobs ADD COLUMN message_count INTEGER',
+  'ALTER TABLE export_jobs ADD COLUMN started_at INTEGER',
+];
+for (const sql of migrations) {
+  try { sqlite.exec(sql); } catch { /* column already exists */ }
+}
 
 export const db = drizzle(sqlite, { schema });
