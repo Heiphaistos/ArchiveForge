@@ -2,7 +2,7 @@ import { Worker } from 'bullmq';
 import path from 'path';
 import { createWriteStream } from 'fs';
 import archiver from 'archiver';
-import { redis } from '../utils/queue.js';
+import { redisConnection } from '../utils/queue.js';
 import { logger } from '../utils/logger.js';
 import { config } from '../config.js';
 import { discordClient } from '../client.js';
@@ -113,7 +113,7 @@ export function startExportWorker(): Worker {
         throw err;
       }
     },
-    { connection: redis, concurrency: 2 }
+    { connection: redisConnection, concurrency: 2 }
   );
 
   worker.on('failed', (job, err) =>

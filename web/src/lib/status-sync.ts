@@ -1,16 +1,16 @@
 import { QueueEvents } from 'bullmq';
-import { Redis as IORedis } from 'ioredis';
 import { db } from './db';
 import { exportJobs } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
-const redis = new IORedis(process.env.REDIS_URL ?? 'redis://redis:6379', {
-  maxRetriesPerRequest: null,
-  enableReadyCheck: false,
-});
+function parseRedisUrl(url: string): { host: string; port: number } {
+  const u = new URL(url);
+  return { host: u.hostname, port: parseInt(u.port || '6379', 10) };
+}
 
 export function startStatusSyncWorker(): void {
-  const events = new QueueEvents('export', { connection: redis });
+  const connection = parseRedisUrl(process.env.REDIS_URL ?? 'redis://redis:6379');
+  const events = new QueueEvents('export', { connection });
 
   events.on('progress', async ({ jobId, data }) => {
     const p = data as { pct?: number; label?: string };
