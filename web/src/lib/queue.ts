@@ -2,7 +2,7 @@ import { Queue } from 'bullmq';
 
 export interface ExportJobPayload {
   guildId: string;
-  format: 'json' | 'html' | 'spa';
+  format: 'json' | 'html' | 'spa' | 'markdown';
   includeAttachments: boolean;
   channelIds?: string[];
   afterDate?: string;
