@@ -30,7 +30,7 @@ services:
     restart: unless-stopped
     env_file: .env
     ports:
-      - "127.0.0.1:3009:3009"
+      - "127.0.0.1:3010:3009"
     volumes:
       - ./exports:/app/exports
       - ./data:/app/data
