@@ -103,7 +103,7 @@ function renderSidebar(){
     for(const ch of groups['__root__'])html+=chHtml(ch);
   }
   for(const cat of categories){
-    html+=\`<div class="ch-group-label">${escHtml(cat.name)}</div>\`;
+    html+=\`<div class="ch-group-label">\${escHtml(cat.name)}</div>\`;
     const children=(groups[cat.id]||[]).sort((a,b)=>a.position-b.position);
     for(const ch of children)html+=chHtml(ch);
   }

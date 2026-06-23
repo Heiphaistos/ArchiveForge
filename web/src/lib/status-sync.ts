@@ -1,5 +1,5 @@
 import { QueueEvents } from 'bullmq';
-import IORedis from 'ioredis';
+import { Redis as IORedis } from 'ioredis';
 import { db } from './db';
 import { exportJobs } from '@/db/schema';
 import { eq } from 'drizzle-orm';

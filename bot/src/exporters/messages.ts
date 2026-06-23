@@ -90,6 +90,6 @@ function mapEmbed(e: Embed): EmbedData {
     timestamp: e.timestamp ?? undefined,
     imageUrl: e.image?.url,
     thumbnailUrl: e.thumbnail?.url,
-    fields: e.fields.map((f) => ({ name: f.name, value: f.value, inline: f.inline })),
+    fields: e.fields.map((f) => ({ name: f.name, value: f.value, inline: f.inline ?? false })),
   };
 }
