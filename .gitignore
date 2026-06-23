@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.next/
+
+# Secrets
+.env
+.env.local
+.env.production
+
+# Data & exports
+exports/
+data/
+logs/
+*.zip
+*.sqlite
+*.db
+
+# Logs
+*.log
+.logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# TypeScript
+*.tsbuildinfo

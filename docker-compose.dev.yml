@@ -1,0 +1,43 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6380:6379"
+    networks:
+      - archiveforge
+
+  bot:
+    build:
+      context: ./bot
+      target: builder
+    command: npm run dev
+    env_file: .env
+    volumes:
+      - ./bot/src:/app/src
+      - ./exports:/app/exports
+      - ./logs:/app/.logs
+    depends_on:
+      - redis
+    networks:
+      - archiveforge
+
+  web:
+    build:
+      context: ./web
+      target: builder
+    command: npm run dev
+    env_file: .env
+    ports:
+      - "127.0.0.1:3009:3009"
+    volumes:
+      - ./web/src:/app/src
+      - ./exports:/app/exports
+      - ./data:/app/data
+    depends_on:
+      - redis
+    networks:
+      - archiveforge
+
+networks:
+  archiveforge:
+    driver: bridge

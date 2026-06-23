@@ -1,0 +1,53 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - archiveforge
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  bot:
+    build: ./bot
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./exports:/app/exports
+      - ./logs:/app/.logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - archiveforge
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:3009:3009"
+    volumes:
+      - ./exports:/app/exports
+      - ./data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - archiveforge
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3009/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  redis_data:
+
+networks:
+  archiveforge:
+    driver: bridge
