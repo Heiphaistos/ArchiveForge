@@ -12,7 +12,6 @@ sqlite.pragma('journal_mode = WAL');
 sqlite.pragma('foreign_keys = ON');
 sqlite.pragma('secure_delete = ON');
 
-// Auto-init schéma sans dépendance externe au démarrage
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS export_jobs (
     id TEXT PRIMARY KEY,
@@ -22,12 +21,26 @@ sqlite.exec(`
     status TEXT NOT NULL DEFAULT 'pending',
     progress REAL DEFAULT 0,
     progress_label TEXT,
+    progress_eta INTEGER,
+    progress_elapsed INTEGER,
+    progress_phase TEXT,
+    channel_count INTEGER,
+    message_count INTEGER,
     zip_path TEXT,
     error_message TEXT,
     created_at INTEGER NOT NULL,
+    started_at INTEGER,
     completed_at INTEGER,
     options TEXT NOT NULL
-  )
+  );
+
+  -- Migration: add new columns if they don't exist
+  ALTER TABLE export_jobs ADD COLUMN IF NOT EXISTS progress_eta INTEGER;
+  ALTER TABLE export_jobs ADD COLUMN IF NOT EXISTS progress_elapsed INTEGER;
+  ALTER TABLE export_jobs ADD COLUMN IF NOT EXISTS progress_phase TEXT;
+  ALTER TABLE export_jobs ADD COLUMN IF NOT EXISTS channel_count INTEGER;
+  ALTER TABLE export_jobs ADD COLUMN IF NOT EXISTS message_count INTEGER;
+  ALTER TABLE export_jobs ADD COLUMN IF NOT EXISTS started_at INTEGER;
 `);
 
 export const db = drizzle(sqlite, { schema });

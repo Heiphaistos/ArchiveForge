@@ -9,7 +9,7 @@ import { z } from 'zod';
 
 const createSchema = z.object({
   guildId: z.string().min(17).max(20),
-  format: z.enum(['json', 'html', 'spa']),
+  format: z.enum(['json', 'html', 'spa', 'markdown']),
   includeAttachments: z.boolean().default(false),
   channelIds: z.array(z.string()).optional(),
   afterDate: z.string().datetime().optional(),

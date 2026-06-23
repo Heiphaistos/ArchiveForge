@@ -1,4 +1,4 @@
-export type ExportFormat = 'json' | 'html' | 'spa';
+export type ExportFormat = 'json' | 'html' | 'spa' | 'markdown';
 
 export interface ExportOptions {
   guildId: string;
@@ -14,7 +14,9 @@ export interface ExportProgress {
   current: number;
   total: number;
   label: string;
-  pct?: number;
+  pct: number;
+  eta: number | null;
+  elapsed: number;
 }
 
 export interface AttachmentData {

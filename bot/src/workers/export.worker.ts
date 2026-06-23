@@ -17,6 +17,7 @@ import { collectAttachments, downloadAttachments, applyDownloadedAttachments } f
 import { writeJsonExport } from '../formatters/json.js';
 import { writeHtmlExport } from '../formatters/html.js';
 import { writeSpaExport } from '../formatters/spa.js';
+import { writeMarkdownExport } from '../formatters/markdown.js';
 import type { ExportOptions, GuildExport, ChannelData, WorkerResult } from '../types.js';
 import type { TextChannel } from 'discord.js';
 
@@ -27,6 +28,7 @@ export function startExportWorker(): Worker {
       const { guildId, format, includeAttachments, channelIds, afterDate, beforeDate } = job.data;
       const workDir = path.join(config.EXPORTS_DIR, job.id!);
       const zipPath = path.join(config.EXPORTS_DIR, `${job.id}.zip`);
+      const startedAt = Date.now();
 
       logger.info(`[worker] Job ${job.id} démarré — guild ${guildId} format=${format}`);
 
@@ -34,14 +36,12 @@ export function startExportWorker(): Worker {
         const guild = await discordClient.guilds.fetch(guildId);
         await guild.fetch();
 
-        // Membres + Rôles en parallèle
-        await updateProgress(job, { phase: 'members', current: 0, total: 1, label: 'Récupération membres et rôles' });
+        await updateProgress(job, { phase: 'members', current: 0, total: 1, label: 'Membres & rôles…' }, startedAt);
         const [members, roles] = await Promise.all([
           fetchAllMembers(guild),
           fetchRoles(guild),
         ]);
 
-        // Canaux
         const rawChannels = getExportableChannels(guild, channelIds);
         const channels: ChannelData[] = [];
         let totalMessages = 0;
@@ -52,8 +52,8 @@ export function startExportWorker(): Worker {
             phase: 'messages',
             current: i,
             total: rawChannels.length,
-            label: `#${ch.name}`,
-          });
+            label: `#${ch.name} (${i + 1}/${rawChannels.length})`,
+          }, startedAt);
 
           const textCh = ch as TextChannel;
           const parsedAfter = afterDate ? new Date(afterDate) : undefined;
@@ -68,7 +68,6 @@ export function startExportWorker(): Worker {
           channels.push({ ...channelToMeta(ch), messages, threads });
         }
 
-        // Pièces jointes
         let finalChannels = channels;
         if (includeAttachments) {
           const atts = collectAttachments(channels);
@@ -76,8 +75,8 @@ export function startExportWorker(): Worker {
             phase: 'attachments',
             current: 0,
             total: atts.length,
-            label: `Download ${atts.length} pièces jointes`,
-          });
+            label: `Téléchargement ${atts.length} pièces jointes…`,
+          }, startedAt);
           const attDir = path.join(workDir, 'attachments');
           const attMap = await downloadAttachments(atts, attDir);
           finalChannels = applyDownloadedAttachments(channels, attMap);
@@ -94,14 +93,13 @@ export function startExportWorker(): Worker {
           roles,
         };
 
-        // Formatage
-        await updateProgress(job, { phase: 'format', current: 0, total: 1, label: 'Génération fichiers export' });
+        await updateProgress(job, { phase: 'format', current: 0, total: 1, label: 'Génération des fichiers…' }, startedAt);
         if (format === 'json') await writeJsonExport(exportData, workDir);
         else if (format === 'html') await writeHtmlExport(finalChannels, workDir);
+        else if (format === 'markdown') await writeMarkdownExport(exportData, workDir);
         else await writeSpaExport(exportData, workDir);
 
-        // ZIP
-        await updateProgress(job, { phase: 'zip', current: 0, total: 1, label: 'Compression ZIP' });
+        await updateProgress(job, { phase: 'zip', current: 0, total: 1, label: 'Compression ZIP…' }, startedAt);
         await zipDirectory(workDir, zipPath);
         await removeDir(workDir);
 
