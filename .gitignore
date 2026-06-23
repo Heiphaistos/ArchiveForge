@@ -12,6 +12,7 @@ dist/
 
 # Data & exports
 exports/
+!web/src/app/api/exports/
 data/
 logs/
 *.zip

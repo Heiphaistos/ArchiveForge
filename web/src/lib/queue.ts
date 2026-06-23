@@ -14,14 +14,21 @@ function parseRedisUrl(url: string): { host: string; port: number } {
   return { host: u.hostname, port: parseInt(u.port || '6379', 10) };
 }
 
-const redisConnection = parseRedisUrl(process.env.REDIS_URL ?? 'redis://redis:6379');
+// Lazy init — évite d'instancier BullMQ au module load (crash build Next.js)
+let _queue: Queue<ExportJobPayload> | null = null;
 
-export const exportQueue = new Queue<ExportJobPayload>('export', {
-  connection: redisConnection,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 5_000 },
-    removeOnComplete: { age: 86_400 },
-    removeOnFail: { age: 604_800 },
-  },
-});
+export function getExportQueue(): Queue<ExportJobPayload> {
+  if (!_queue) {
+    const connection = parseRedisUrl(process.env.REDIS_URL ?? 'redis://redis:6379');
+    _queue = new Queue<ExportJobPayload>('export', {
+      connection,
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5_000 },
+        removeOnComplete: { age: 86_400 },
+        removeOnFail: { age: 604_800 },
+      },
+    });
+  }
+  return _queue;
+}
