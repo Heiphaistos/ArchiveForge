@@ -117,9 +117,10 @@ img { display: block; }
   transition: background .15s, transform .1s; white-space: nowrap;
 }
 .btn:active { transform: scale(.98); }
-.btn-primary { background: var(--blurple); color: #fff; width: 100%; }
+.btn-primary { background: var(--blurple); color: #fff; }
 .btn-primary:hover:not(:disabled) { background: var(--blurple-hover); }
 .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn-block { width: 100%; display: flex; }
 .btn-ghost { background: rgba(255,255,255,.06); color: var(--text); }
 .btn-ghost:hover { background: rgba(255,255,255,.1); }
 .btn-green { background: var(--green); color: #fff; font-size: 0.8rem; padding: 6px 12px; }

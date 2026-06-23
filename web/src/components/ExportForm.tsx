@@ -176,11 +176,13 @@ export function ExportForm({ onCreated }: Props) {
       {/* Step indicators */}
       <div className="steps-indicator">
         {(['Serveur', 'Portée', 'Options'] as const).map((label, i) => (
-          <div key={label} className={`step-item ${step === i + 1 ? 'step-active' : step > i + 1 ? 'step-done' : ''}`}>
-            <div className="step-dot">{step > i + 1 ? '✓' : i + 1}</div>
-            <span className="step-label">{label}</span>
-            {i < 2 && <div className="step-line" />}
-          </div>
+          <>
+            <div key={label} className={`step-item ${step === i + 1 ? 'step-active' : step > i + 1 ? 'step-done' : ''}`}>
+              <div className="step-dot">{step > i + 1 ? '✓' : i + 1}</div>
+              <span className="step-label">{label}</span>
+            </div>
+            {i < 2 && <div key={`line-${i}`} className="step-line" />}
+          </>
         ))}
       </div>
 
@@ -324,7 +326,7 @@ export function ExportForm({ onCreated }: Props) {
 
           <div className="btn-row">
             <button type="button" className="btn btn-ghost" onClick={() => setStep(1)}>← Retour</button>
-            <button type="button" className="btn btn-primary" onClick={() => setStep(3)}>Suivant →</button>
+            <button type="button" className="btn btn-primary btn-block" onClick={() => setStep(3)}>Suivant →</button>
           </div>
         </div>
       )}
@@ -382,7 +384,7 @@ export function ExportForm({ onCreated }: Props) {
             <button type="button" className="btn btn-ghost" onClick={() => setStep(2)}>← Retour</button>
             <button
               type="button"
-              className="btn btn-primary"
+              className="btn btn-primary btn-block"
               disabled={submitLoading}
               onClick={handleSubmit}
             >

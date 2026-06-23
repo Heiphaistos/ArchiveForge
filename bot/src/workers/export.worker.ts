@@ -18,8 +18,9 @@ import { writeJsonExport } from '../formatters/json.js';
 import { writeHtmlExport } from '../formatters/html.js';
 import { writeSpaExport } from '../formatters/spa.js';
 import { writeMarkdownExport } from '../formatters/markdown.js';
-import type { ExportOptions, GuildExport, ChannelData, WorkerResult } from '../types.js';
-import type { TextChannel } from 'discord.js';
+import { ChannelType } from 'discord.js';
+import type { TextChannel, CategoryChannel } from 'discord.js';
+import type { ExportOptions, GuildExport, ChannelData, CategoryMeta, WorkerResult } from '../types.js';
 
 export function startExportWorker(): Worker {
   const worker = new Worker<ExportOptions, WorkerResult>(
@@ -41,6 +42,11 @@ export function startExportWorker(): Worker {
           fetchAllMembers(guild),
           fetchRoles(guild),
         ]);
+
+        const categories: CategoryMeta[] = [...guild.channels.cache.values()]
+          .filter((c) => c.type === ChannelType.GuildCategory)
+          .map((c) => ({ id: c.id, name: c.name, position: (c as CategoryChannel).position }))
+          .sort((a, b) => a.position - b.position);
 
         const rawChannels = getExportableChannels(guild, channelIds);
         const channels: ChannelData[] = [];
@@ -88,6 +94,7 @@ export function startExportWorker(): Worker {
           icon: guild.iconURL({ extension: 'png', size: 128 }),
           exportedAt: new Date().toISOString(),
           options: job.data,
+          categories,
           channels: finalChannels,
           members,
           roles,

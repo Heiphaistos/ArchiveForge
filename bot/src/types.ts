@@ -95,12 +95,19 @@ export interface RoleData {
   position: number;
 }
 
+export interface CategoryMeta {
+  id: string;
+  name: string;
+  position: number;
+}
+
 export interface GuildExport {
   id: string;
   name: string;
   icon: string | null;
   exportedAt: string;
   options: ExportOptions;
+  categories: CategoryMeta[];
   channels: ChannelData[];
   members: MemberData[];
   roles: RoleData[];
