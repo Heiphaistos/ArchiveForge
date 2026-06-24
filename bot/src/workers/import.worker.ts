@@ -1,11 +1,20 @@
 import { Worker } from 'bullmq';
 import StreamZip from 'node-stream-zip';
+import fs from 'fs/promises';
 import { redisConnection } from '../utils/queue.js';
 import { discordClient } from '../client.js';
 import { logger } from '../utils/logger.js';
 import { ChannelType } from 'discord.js';
 import type { TextChannel, NonThreadGuildBasedChannel } from 'discord.js';
 import type { ImportOptions, ImportResult, GuildExport } from '../types.js';
+
+// Simplified helper to bypass guild.channels.create overload complexity
+type CreateChannelFn = (opts: {
+  name: string;
+  type: ChannelType;
+  parent?: string;
+  reason?: string;
+}) => Promise<NonThreadGuildBasedChannel>;
 
 const CHANNEL_TYPE_MAP: Record<number, ChannelType> = {
   0: ChannelType.GuildText,
@@ -44,17 +53,22 @@ export function startImportWorker(): Worker {
 
       logger.info(`[import-worker] Job ${job.id} démarré — cible=${targetGuildId}`);
 
-      // 1. Lire export.json depuis le ZIP (node-stream-zip supporte ZIP64 / > 2 GiB)
+      // 1. Lire export.json depuis le ZIP (node-stream-zip supporte ZIP64 / pas de limite de taille)
       await job.updateProgress({ phase: 'extract', pct: 2, label: 'Lecture de l\'archive…' });
+
+      // Vérification existence avant d'ouvrir le ZIP
+      try { await fs.access(zipPath); } catch {
+        throw new Error(`Archive introuvable: ${zipPath}`);
+      }
+
       const zip = new StreamZip.async({ file: zipPath });
       let exportData: GuildExport;
       try {
-        const entryInfo = await zip.entry('export.json');
-        if (!entryInfo) throw new Error('export.json absent. Réexportez en JSON, SPA, HTML ou Markdown.');
-        const buf = await zip.entryData('export.json');
-        exportData = JSON.parse(buf.toString('utf-8'));
+        const buf = await zip.entryData('export.json').catch(() => null);
+        if (!buf) throw new Error('export.json absent du ZIP. Relancez un export (JSON, SPA, HTML ou Markdown) — ce format inclut désormais le manifeste requis.');
+        exportData = JSON.parse(buf.toString('utf-8')) as GuildExport;
       } finally {
-        await zip.close();
+        await zip.close().catch(() => {});
       }
       const sourceName = exportData.name;
 
@@ -138,12 +152,13 @@ export function startImportWorker(): Worker {
 
           try {
             const parentId = ch.parentId ? (catMap.get(ch.parentId) ?? undefined) : undefined;
-            const newCh = await guild.channels.create({
+            const createFn = guild.channels.create.bind(guild.channels) as CreateChannelFn;
+            const newCh = await createFn({
               name: ch.name,
               type: discordType,
               parent: parentId,
               reason: `ArchiveForge import — ${sourceName}`,
-            } as Parameters<typeof guild.channels.create>[0]);
+            });
 
             if (isTextChannel(newCh)) {
               chMap.set(ch.id, newCh);
