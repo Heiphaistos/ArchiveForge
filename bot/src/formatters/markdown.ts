@@ -62,6 +62,7 @@ export async function writeMarkdownExport(data: GuildExport, outputDir: string):
     members += `| ${m.username} | ${m.displayName} | ${roles} |\n`;
   }
   await fs.writeFile(path.join(outputDir, 'membres.md'), members, 'utf-8');
+  await fs.writeFile(path.join(outputDir, 'export.json'), JSON.stringify(data, null, 2), 'utf-8');
 }
 
 function formatMessages(messages: MessageData[]): string {

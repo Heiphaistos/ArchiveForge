@@ -2,6 +2,7 @@ import { discordClient } from './client.js';
 import { config } from './config.js';
 import { logger } from './utils/logger.js';
 import { startExportWorker } from './workers/export.worker.js';
+import { startImportWorker } from './workers/import.worker.js';
 
 process.on('uncaughtException', (err) => {
   logger.error('[process] uncaughtException', {
@@ -25,6 +26,8 @@ discordClient.once('ready', (client) => {
   logger.info(`[bot] Guilds: ${client.guilds.cache.size}`);
   startExportWorker();
   logger.info('[worker] Export worker démarré (concurrency=2)');
+  startImportWorker();
+  logger.info('[worker] Import worker démarré (concurrency=1)');
 });
 
 discordClient.on('error', (err) => logger.error('[discord] Erreur client', { err }));

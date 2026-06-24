@@ -35,6 +35,28 @@ sqlite.exec(`
   )
 `);
 
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS import_jobs (
+    id TEXT PRIMARY KEY,
+    source_job_id TEXT NOT NULL,
+    source_guild_name TEXT,
+    target_guild_id TEXT NOT NULL,
+    target_guild_name TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    progress REAL DEFAULT 0,
+    progress_label TEXT,
+    progress_phase TEXT,
+    roles_created INTEGER,
+    channels_created INTEGER,
+    messages_imported INTEGER,
+    error_message TEXT,
+    created_at INTEGER NOT NULL,
+    started_at INTEGER,
+    completed_at INTEGER,
+    options TEXT NOT NULL
+  )
+`);
+
 // SQLite doesn't support IF NOT EXISTS in ALTER TABLE — catch per column
 const migrations = [
   'ALTER TABLE export_jobs ADD COLUMN progress_eta INTEGER',

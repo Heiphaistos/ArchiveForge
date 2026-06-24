@@ -119,3 +119,23 @@ export interface WorkerResult {
   channelCount: number;
   messageCount: number;
 }
+
+export interface ImportOptions {
+  zipPath: string;
+  sourceGuildName: string;
+  targetGuildId: string;
+  importCategories: boolean;
+  importChannels: boolean;
+  importRoles: boolean;
+  importMessages: boolean;
+  channelIds?: string[];
+  messageLimit: number;
+}
+
+export interface ImportResult {
+  targetGuildName: string;
+  sourceName: string;
+  rolesCreated: number;
+  channelsCreated: number;
+  messagesImported: number;
+}

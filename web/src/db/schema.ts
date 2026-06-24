@@ -23,3 +23,26 @@ export const exportJobs = sqliteTable('export_jobs', {
 
 export type ExportJob = typeof exportJobs.$inferSelect;
 export type NewExportJob = typeof exportJobs.$inferInsert;
+
+export const importJobs = sqliteTable('import_jobs', {
+  id: text('id').primaryKey(),
+  sourceJobId: text('source_job_id').notNull(),
+  sourceGuildName: text('source_guild_name'),
+  targetGuildId: text('target_guild_id').notNull(),
+  targetGuildName: text('target_guild_name'),
+  status: text('status').notNull().default('pending'),
+  progress: real('progress').default(0),
+  progressLabel: text('progress_label'),
+  progressPhase: text('progress_phase'),
+  rolesCreated: integer('roles_created'),
+  channelsCreated: integer('channels_created'),
+  messagesImported: integer('messages_imported'),
+  errorMessage: text('error_message'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  startedAt: integer('started_at', { mode: 'timestamp' }),
+  completedAt: integer('completed_at', { mode: 'timestamp' }),
+  options: text('options').notNull(),
+});
+
+export type ImportJob = typeof importJobs.$inferSelect;
+export type NewImportJob = typeof importJobs.$inferInsert;

@@ -6,6 +6,7 @@ export async function writeSpaExport(data: GuildExport, outputDir: string): Prom
   await fs.mkdir(outputDir, { recursive: true });
   // Embed all data inline — no external fetch needed (works from file://)
   await fs.writeFile(path.join(outputDir, 'viewer.html'), buildViewerHtml(data), 'utf-8');
+  await fs.writeFile(path.join(outputDir, 'export.json'), JSON.stringify(data, null, 2), 'utf-8');
 }
 
 function esc(str: unknown): string {

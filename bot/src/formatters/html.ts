@@ -1,13 +1,14 @@
 import fs from 'fs/promises';
 import path from 'path';
-import type { ChannelData, MessageData } from '../types.js';
+import type { GuildExport, ChannelData, MessageData } from '../types.js';
 
-export async function writeHtmlExport(channels: ChannelData[], outputDir: string): Promise<void> {
+export async function writeHtmlExport(data: GuildExport, outputDir: string): Promise<void> {
   await fs.mkdir(outputDir, { recursive: true });
-  for (const ch of channels) {
+  for (const ch of data.channels) {
     const html = buildChannelHtml(ch);
     await fs.writeFile(path.join(outputDir, `${ch.name}-${ch.id}.html`), html, 'utf-8');
   }
+  await fs.writeFile(path.join(outputDir, 'export.json'), JSON.stringify(data, null, 2), 'utf-8');
 }
 
 function buildChannelHtml(ch: ChannelData): string {

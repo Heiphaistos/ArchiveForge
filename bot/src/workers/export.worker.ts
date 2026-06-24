@@ -102,7 +102,7 @@ export function startExportWorker(): Worker {
 
         await updateProgress(job, { phase: 'format', current: 0, total: 1, label: 'Génération des fichiers…' }, startedAt);
         if (format === 'json') await writeJsonExport(exportData, workDir);
-        else if (format === 'html') await writeHtmlExport(finalChannels, workDir);
+        else if (format === 'html') await writeHtmlExport(exportData, workDir);
         else if (format === 'markdown') await writeMarkdownExport(exportData, workDir);
         else await writeSpaExport(exportData, workDir);
 
