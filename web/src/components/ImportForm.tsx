@@ -158,7 +158,9 @@ export function ImportForm({ onCreated }: Props) {
               placeholder="123456789012345678"
               pattern="\d{17,20}"
             />
-            <span className="hint">Le bot doit être membre de ce serveur avec la permission Administrateur</span>
+            <div className="import-warning" style={{ marginTop: '8px', fontSize: '0.8rem' }}>
+              ⚠ Le bot doit être <strong>invité dans le serveur cible</strong> avec la permission Administrateur avant de lancer l&apos;import.
+            </div>
           </div>
 
           {step1Error && <div className="error-box">{step1Error}</div>}

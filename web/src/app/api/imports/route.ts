@@ -55,6 +55,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Export source non terminé' }, { status: 400 });
   }
 
+  // Vérifier que le bot est membre du serveur cible
+  const botToken = process.env.DISCORD_TOKEN;
+  if (botToken) {
+    const guildCheck = await fetch(
+      `https://discord.com/api/v10/guilds/${parsed.data.targetGuildId}`,
+      { headers: { Authorization: `Bot ${botToken}` } }
+    );
+    if (guildCheck.status === 404 || guildCheck.status === 403) {
+      return NextResponse.json({
+        error: `Le bot n'est pas membre du serveur ${parsed.data.targetGuildId}. Invitez-le d'abord avec la permission Administrateur.`,
+      }, { status: 400 });
+    }
+  }
+
   const id = randomUUID();
   const now = new Date();
 

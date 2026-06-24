@@ -73,8 +73,19 @@ export function startImportWorker(): Worker {
       const sourceName = exportData.name;
 
       // 2. Récupérer le serveur cible
-      const guild = await discordClient.guilds.fetch(targetGuildId);
-      await guild.fetch();
+      let guild: Awaited<ReturnType<typeof discordClient.guilds.fetch>>;
+      try {
+        guild = await discordClient.guilds.fetch(targetGuildId);
+        await guild.fetch();
+      } catch (e) {
+        const code = (e as { code?: number }).code;
+        if (code === 10004 || String(e).includes('Unknown Guild')) {
+          throw new Error(
+            `Serveur introuvable (${targetGuildId}). Le bot doit être membre du serveur cible — invite-le d'abord via le portail Discord Developer ou un lien d'invitation.`
+          );
+        }
+        throw e;
+      }
 
       let rolesCreated = 0;
       let channelsCreated = 0;
