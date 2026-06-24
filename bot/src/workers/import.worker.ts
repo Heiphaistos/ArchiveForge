@@ -1,5 +1,5 @@
 import { Worker } from 'bullmq';
-import AdmZip from 'adm-zip';
+import StreamZip from 'node-stream-zip';
 import { redisConnection } from '../utils/queue.js';
 import { discordClient } from '../client.js';
 import { logger } from '../utils/logger.js';
@@ -44,12 +44,18 @@ export function startImportWorker(): Worker {
 
       logger.info(`[import-worker] Job ${job.id} démarré — cible=${targetGuildId}`);
 
-      // 1. Lire export.json depuis le ZIP
+      // 1. Lire export.json depuis le ZIP (node-stream-zip supporte ZIP64 / > 2 GiB)
       await job.updateProgress({ phase: 'extract', pct: 2, label: 'Lecture de l\'archive…' });
-      const zip = new AdmZip(zipPath);
-      const entry = zip.getEntry('export.json');
-      if (!entry) throw new Error('export.json absent. Réexportez en JSON, SPA, HTML ou Markdown.');
-      const exportData: GuildExport = JSON.parse(entry.getData().toString('utf-8'));
+      const zip = new StreamZip.async({ file: zipPath });
+      let exportData: GuildExport;
+      try {
+        const entryInfo = await zip.entry('export.json');
+        if (!entryInfo) throw new Error('export.json absent. Réexportez en JSON, SPA, HTML ou Markdown.');
+        const buf = await zip.entryData('export.json');
+        exportData = JSON.parse(buf.toString('utf-8'));
+      } finally {
+        await zip.close();
+      }
       const sourceName = exportData.name;
 
       // 2. Récupérer le serveur cible
