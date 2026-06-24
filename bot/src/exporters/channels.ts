@@ -2,14 +2,14 @@ import { ChannelType, type Guild, type GuildBasedChannel, type TextChannel } fro
 import type { ChannelData } from '../types.js';
 import { logger } from '../utils/logger.js';
 
+// Threads (PublicThread, PrivateThread, AnnouncementThread) sont capturés via
+// fetchThreads() depuis leur canal parent — ne pas les inclure ici pour éviter les doublons
 const EXPORTABLE_TYPES = new Set([
   ChannelType.GuildText,
   ChannelType.GuildAnnouncement,
   ChannelType.GuildForum,
+  ChannelType.GuildMedia,
   ChannelType.GuildVoice,
-  ChannelType.PublicThread,
-  ChannelType.PrivateThread,
-  ChannelType.AnnouncementThread,
 ]);
 
 export function getExportableChannels(guild: Guild, allowedIds?: string[]): GuildBasedChannel[] {

@@ -65,8 +65,13 @@ export function startExportWorker(): Worker {
           const parsedAfter = afterDate ? new Date(afterDate) : undefined;
           const parsedBefore = beforeDate ? new Date(beforeDate) : undefined;
 
+          // Les ForumChannel et GuildMedia n'ont pas de messages directs — seulement des posts (threads)
+          const isForum = ch.type === ChannelType.GuildForum || ch.type === ChannelType.GuildMedia;
+
           const [messages, threads] = await Promise.all([
-            fetchAllMessages(textCh, { afterDate: parsedAfter, beforeDate: parsedBefore }),
+            isForum
+              ? Promise.resolve([])
+              : fetchAllMessages(textCh, { afterDate: parsedAfter, beforeDate: parsedBefore }),
             fetchThreads(textCh),
           ]);
 
