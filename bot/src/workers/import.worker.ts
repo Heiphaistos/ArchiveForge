@@ -1,6 +1,6 @@
 import { Worker } from 'bullmq';
 import { WebhookClient, ChannelType, Routes, ThreadAutoArchiveDuration } from 'discord.js';
-import type { TextChannel, ForumChannel, NonThreadGuildBasedChannel } from 'discord.js';
+import type { TextChannel, ForumChannel, NonThreadGuildBasedChannel, Guild } from 'discord.js';
 import StreamZip from 'node-stream-zip';
 import fs from 'fs/promises';
 import { redisConnection } from '../utils/queue.js';
@@ -196,9 +196,9 @@ export function startImportWorker(): Worker {
       const sourceName = exportData.name;
 
       // 2. Serveur cible
-      let guild: Awaited<ReturnType<typeof discordClient.guilds.fetch>>;
+      let guild: Guild;
       try {
-        guild = await discordClient.guilds.fetch(targetGuildId);
+        guild = await discordClient.guilds.fetch(targetGuildId) as Guild;
         await guild.fetch();
       } catch (e) {
         const code = (e as { code?: number }).code;
