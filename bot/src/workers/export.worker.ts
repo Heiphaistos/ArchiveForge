@@ -65,14 +65,16 @@ export function startExportWorker(): Worker {
           const parsedAfter = afterDate ? new Date(afterDate) : undefined;
           const parsedBefore = beforeDate ? new Date(beforeDate) : undefined;
 
-          // Les ForumChannel et GuildMedia n'ont pas de messages directs — seulement des posts (threads)
+          // Forums/Media = messages directs absents, seulement des posts (threads)
+          // Voice/Stage = pas de messages ni de threads textuels
           const isForum = ch.type === ChannelType.GuildForum || ch.type === ChannelType.GuildMedia;
+          const isVoice = ch.type === ChannelType.GuildVoice || ch.type === ChannelType.GuildStageVoice;
 
           const [messages, threads] = await Promise.all([
-            isForum
+            (isForum || isVoice)
               ? Promise.resolve([])
               : fetchAllMessages(textCh, { afterDate: parsedAfter, beforeDate: parsedBefore }),
-            fetchThreads(textCh),
+            isVoice ? Promise.resolve([]) : fetchThreads(textCh),
           ]);
 
           totalMessages += messages.length + threads.reduce((s, t) => s + t.messages.length, 0);

@@ -10,6 +10,7 @@ const EXPORTABLE_TYPES = new Set([
   ChannelType.GuildForum,
   ChannelType.GuildMedia,
   ChannelType.GuildVoice,
+  ChannelType.GuildStageVoice,
 ]);
 
 export function getExportableChannels(guild: Guild, allowedIds?: string[]): GuildBasedChannel[] {
@@ -31,5 +32,7 @@ export function channelToMeta(channel: GuildBasedChannel): Omit<ChannelData, 'me
     parentId: channel.parentId,
     position: tc.position ?? 0,
     topic: tc.topic ?? null,
+    nsfw: tc.nsfw ?? false,
+    rateLimitPerUser: tc.rateLimitPerUser ?? 0,
   };
 }

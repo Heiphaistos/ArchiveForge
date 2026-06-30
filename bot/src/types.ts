@@ -74,6 +74,8 @@ export interface ChannelData {
   parentId: string | null;
   position: number;
   topic: string | null;
+  nsfw: boolean;
+  rateLimitPerUser: number;
   messages: MessageData[];
   threads: ThreadData[];
 }

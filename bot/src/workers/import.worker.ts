@@ -12,6 +12,7 @@ const CHANNEL_TYPE_MAP: Record<number, ChannelType> = {
   0: ChannelType.GuildText,
   2: ChannelType.GuildVoice,
   5: ChannelType.GuildAnnouncement,
+  13: ChannelType.GuildStageVoice,
   15: ChannelType.GuildForum,
   16: ChannelType.GuildMedia,
 };
@@ -34,12 +35,16 @@ function isForum(ch: NonThreadGuildBasedChannel): ch is ForumChannel {
   return ch.type === ChannelType.GuildForum || ch.type === ChannelType.GuildMedia;
 }
 
-type CreateChannelFn = (opts: {
+type CreateChannelOpts = {
   name: string;
   type: ChannelType;
   parent?: string;
+  topic?: string;
+  nsfw?: boolean;
+  rateLimitPerUser?: number;
   reason?: string;
-}) => Promise<NonThreadGuildBasedChannel>;
+};
+type CreateChannelFn = (opts: CreateChannelOpts) => Promise<NonThreadGuildBasedChannel>;
 
 async function replayMessagesViaWebhook(
   webhookId: string,
@@ -52,18 +57,31 @@ async function replayMessagesViaWebhook(
   const wh = new WebhookClient({ id: webhookId, token: webhookToken });
   for (const msg of msgs.slice(0, limit)) {
     if (!msg.content && !msg.attachments.length) continue;
-    try {
-      await wh.send({
-        username: trunc(msg.authorName || 'Utilisateur', 80),
-        avatarURL: msg.authorAvatar ?? undefined,
-        content: msg.content ? trunc(msg.content, 2000) : ' ',
-        ...(threadId ? { threadId } : {}),
-        allowedMentions: { parse: [] },
-      });
-      count++;
-    } catch (e) {
-      logger.warn('[import] Message ignoré', { e });
-      await sleep(2000);
+    const payload = {
+      username: trunc(msg.authorName || 'Utilisateur', 80),
+      avatarURL: msg.authorAvatar ?? undefined,
+      content: msg.content ? trunc(msg.content, 2000) : ' ',
+      ...(threadId ? { threadId } : {}),
+      allowedMentions: { parse: [] },
+    };
+    let sent = false;
+    for (let attempt = 0; attempt < 3 && !sent; attempt++) {
+      try {
+        await wh.send(payload);
+        sent = true;
+        count++;
+      } catch (e: unknown) {
+        const err = e as { status?: number; retryAfter?: number };
+        if (err?.status === 429) {
+          const retryAfter = (err.retryAfter ?? 5) * 1000;
+          logger.warn(`[import] 429 webhook — retry dans ${retryAfter}ms`);
+          await sleep(retryAfter);
+        } else {
+          logger.warn('[import] Message ignoré', { e });
+          await sleep(2000);
+          break;
+        }
+      }
     }
     await sleep(MSG_DELAY);
   }
@@ -71,7 +89,20 @@ async function replayMessagesViaWebhook(
   return count;
 }
 
+async function cleanupOldWebhooks(channelId: string): Promise<void> {
+  try {
+    const webhooks = await discordClient.rest.get(Routes.channelWebhooks(channelId)) as Array<{ id: string; token?: string; name?: string }>;
+    for (const wh of webhooks) {
+      if (wh.name === 'ArchiveForge Import' && wh.token) {
+        await discordClient.rest.delete(Routes.webhook(wh.id, wh.token)).catch(() => {});
+        await sleep(300);
+      }
+    }
+  } catch {}
+}
+
 async function createChannelWebhook(channelId: string): Promise<{ id: string; token: string } | null> {
+  await cleanupOldWebhooks(channelId);
   try {
     const wh = await discordClient.rest.post(Routes.channelWebhooks(channelId), {
       body: { name: 'ArchiveForge Import' },
@@ -97,7 +128,7 @@ async function replayThread(
 ): Promise<number> {
   try {
     const newThread = await textCh.threads.create({
-      name: thread.name,
+      name: trunc(thread.name, 100),
       autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek,
       reason: `ArchiveForge import — ${sourceName}`,
     });
@@ -120,7 +151,7 @@ async function replayForumPost(
   try {
     const firstMsg = post.messages[0];
     const newPost = await forumCh.threads.create({
-      name: post.name,
+      name: trunc(post.name, 100),
       autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek,
       message: { content: firstMsg.content ? trunc(firstMsg.content, 2000) : '.' },
       reason: `ArchiveForge import — ${sourceName}`,
@@ -242,7 +273,20 @@ export function startImportWorker(): Worker {
           try {
             const parentId = ch.parentId ? (catMap.get(ch.parentId) ?? undefined) : undefined;
             const createFn = guild.channels.create.bind(guild.channels) as CreateChannelFn;
-            const newCh = await createFn({ name: ch.name, type: discordType, parent: parentId, reason: `ArchiveForge import — ${sourceName}` });
+            const opts: CreateChannelOpts = {
+              name: ch.name,
+              type: discordType,
+              reason: `ArchiveForge import — ${sourceName}`,
+              ...(parentId ? { parent: parentId } : {}),
+              ...(ch.topic ? { topic: ch.topic } : {}),
+            };
+            // nsfw et rateLimitPerUser uniquement sur les salons texte/annonce
+            if (discordType === ChannelType.GuildText || discordType === ChannelType.GuildAnnouncement) {
+              if (ch.nsfw) opts.nsfw = true;
+              if (ch.rateLimitPerUser) opts.rateLimitPerUser = ch.rateLimitPerUser;
+            }
+
+            const newCh = await createFn(opts);
 
             if (isTextLike(newCh)) textChMap.set(ch.id, newCh);
             else if (isForum(newCh)) forumChMap.set(ch.id, newCh.id);
@@ -255,62 +299,65 @@ export function startImportWorker(): Worker {
       // 6. Messages — texte + threads + forum posts
       if (importMessages) {
         const totalChannels = textChMap.size + forumChMap.size;
-        let processed = 0;
 
-        // 6a. Salons texte : messages directs + threads
-        for (const [oldId, newCh] of textChMap) {
-          const chData = exportData.channels.find(c => c.id === oldId);
-          if (!chData) { processed++; continue; }
+        if (totalChannels === 0) {
+          await job.updateProgress({ phase: 'messages', pct: 95, label: 'Aucun salon avec messages' });
+        } else {
+          let processed = 0;
 
-          await job.updateProgress({
-            phase: 'messages',
-            pct: Math.round(45 + (processed / Math.max(totalChannels, 1)) * 50),
-            label: `#${chData.name} (${chData.messages.length} msgs, ${chData.threads.length} threads)`,
-          });
+          // 6a. Salons texte : messages directs + threads
+          for (const [oldId, newCh] of textChMap) {
+            const chData = exportData.channels.find(c => c.id === oldId);
+            if (!chData) { processed++; continue; }
 
-          const wh = await createChannelWebhook(newCh.id);
-          if (wh) {
-            // Messages du salon
-            messagesImported += await replayMessagesViaWebhook(wh.id, wh.token, chData.messages, messageLimit);
+            await job.updateProgress({
+              phase: 'messages',
+              pct: Math.round(45 + (processed / totalChannels) * 50),
+              label: `#${chData.name} (${chData.messages.length} msgs, ${chData.threads.length} threads)`,
+            });
 
-            // Threads du salon
-            for (const thread of chData.threads) {
-              messagesImported += await replayThread(thread, newCh, wh.id, wh.token, messageLimit, sourceName);
-              await sleep(500);
+            const wh = await createChannelWebhook(newCh.id);
+            if (wh) {
+              messagesImported += await replayMessagesViaWebhook(wh.id, wh.token, chData.messages, messageLimit);
+
+              for (const thread of chData.threads) {
+                messagesImported += await replayThread(thread, newCh, wh.id, wh.token, messageLimit, sourceName);
+                await sleep(500);
+              }
+
+              await deleteWebhook(wh.id, wh.token);
+            }
+            processed++;
+          }
+
+          // 6b. Forums : posts (= threads) avec messages
+          for (const [oldId, newChId] of forumChMap) {
+            const chData = exportData.channels.find(c => c.id === oldId);
+            if (!chData || chData.threads.length === 0) { processed++; continue; }
+
+            await job.updateProgress({
+              phase: 'messages',
+              pct: Math.round(45 + (processed / totalChannels) * 50),
+              label: `Forum #${chData.name} — ${chData.threads.length} posts`,
+            });
+
+            const wh = await createChannelWebhook(newChId);
+            let forumCh: ForumChannel | null = null;
+            try {
+              forumCh = await discordClient.channels.fetch(newChId) as ForumChannel;
+            } catch (e) {
+              logger.warn(`[import] Forum channel introuvable: ${newChId}`, { e });
             }
 
-            await deleteWebhook(wh.id, wh.token);
-          }
-          processed++;
-        }
-
-        // 6b. Forums : posts (= threads) avec messages
-        for (const [oldId, newChId] of forumChMap) {
-          const chData = exportData.channels.find(c => c.id === oldId);
-          if (!chData || chData.threads.length === 0) { processed++; continue; }
-
-          await job.updateProgress({
-            phase: 'messages',
-            pct: Math.round(45 + (processed / Math.max(totalChannels, 1)) * 50),
-            label: `Forum #${chData.name} — ${chData.threads.length} posts`,
-          });
-
-          const wh = await createChannelWebhook(newChId);
-          let forumCh: ForumChannel | null = null;
-          try {
-            forumCh = await discordClient.channels.fetch(newChId) as ForumChannel;
-          } catch (e) {
-            logger.warn(`[import] Forum channel introuvable: ${newChId}`, { e });
-          }
-
-          if (wh && forumCh) {
-            for (const post of chData.threads) {
-              messagesImported += await replayForumPost(post, forumCh, wh.id, wh.token, messageLimit, sourceName);
-              await sleep(500);
+            if (wh && forumCh) {
+              for (const post of chData.threads) {
+                messagesImported += await replayForumPost(post, forumCh, wh.id, wh.token, messageLimit, sourceName);
+                await sleep(500);
+              }
+              await deleteWebhook(wh.id, wh.token);
             }
-            await deleteWebhook(wh.id, wh.token);
+            processed++;
           }
-          processed++;
         }
       }
 
@@ -319,7 +366,7 @@ export function startImportWorker(): Worker {
 
       return { targetGuildName: guild.name, sourceName, rolesCreated, channelsCreated, messagesImported };
     },
-    { connection: redisConnection, concurrency: 1 }
+    { connection: redisConnection, concurrency: 1, lockDuration: 300_000 }
   );
 
   worker.on('failed', (job, err) =>
